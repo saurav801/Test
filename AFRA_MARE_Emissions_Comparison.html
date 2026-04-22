@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AFRA MARE — Emissions Data Deviation Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1f2d45;
+    --accent: #f97316;
+    --accent2: #38bdf8;
+    --red: #ef4444;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --dim: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0b0f1a 0%, #111827 50%, #0f1729 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 60px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(249,115,22,0.12) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: 200px;
+    width: 400px; height: 200px;
+    background: radial-gradient(ellipse, rgba(56,189,248,0.06) 0%, transparent 70%);
+  }
+  .vessel-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(249,115,22,0.12);
+    border: 1px solid rgba(249,115,22,0.3);
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .vessel-tag::before { content: '⬡'; font-size: 10px; }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    color: #fff;
+  }
+  h1 span { color: var(--accent); }
+
+  .meta-row {
+    display: flex; gap: 32px; flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .meta-item {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .meta-label { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; font-family: 'DM Mono', monospace; }
+  .meta-value { font-size: 13px; color: var(--dim); font-family: 'DM Mono', monospace; }
+
+  /* Main layout */
+  .main { padding: 48px 60px; max-width: 1400px; }
+
+  /* Section */
+  .section { margin-bottom: 48px; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    background: var(--accent);
+    color: #000;
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .section-title { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .section-sub { font-size: 12px; color: var(--muted); margin-left: auto; font-family: 'DM Mono', monospace; }
+
+  /* Critical alert */
+  .alert {
+    background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04));
+    border: 1px solid rgba(239,68,68,0.3);
+    border-left: 4px solid var(--red);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    display: flex; align-items: flex-start; gap: 16px;
+  }
+  .alert-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+  .alert-title { font-size: 15px; font-weight: 700; color: #fca5a5; margin-bottom: 4px; }
+  .alert-body { font-size: 13px; color: var(--dim); line-height: 1.6; }
+  .alert-body strong { color: var(--red); }
+
+  /* Summary cards */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .card.crit::before { background: var(--red); }
+  .card.ok::before { background: var(--green); }
+  .card.info::before { background: var(--accent2); }
+  .card.warn::before { background: var(--yellow); }
+
+  .card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 8px; }
+  .card-value { font-size: 28px; font-weight: 800; line-height: 1; }
+  .card-value.red { color: var(--red); }
+  .card-value.green { color: var(--green); }
+  .card-value.blue { color: var(--accent2); }
+  .card-value.orange { color: var(--accent); }
+  .card-sub { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: 'DM Mono', monospace; }
+
+  /* Comparison table */
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+  }
+  .comp-table thead th {
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .comp-table thead th:first-child { border-radius: 8px 0 0 0; }
+  .comp-table thead th:last-child { border-radius: 0 8px 0 0; }
+  .comp-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .comp-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .comp-table tbody tr.total-row {
+    background: rgba(249,115,22,0.05);
+    border-top: 2px solid rgba(249,115,22,0.3);
+    font-weight: 600;
+  }
+  .comp-table tbody tr.total-row td { color: var(--accent); }
+  .comp-table td {
+    padding: 12px 16px;
+    color: var(--dim);
+  }
+  .comp-table td:first-child { color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; }
+  .comp-table td.num { text-align: right; }
+  .diff-pos { color: var(--red); }
+  .diff-neg { color: var(--green); }
+  .diff-zero { color: var(--muted); }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill.crit { background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .pill.ok { background: rgba(34,197,94,0.12); color: #86efac; }
+  .pill.minor { background: rgba(100,116,139,0.15); color: var(--muted); }
+
+  /* Breakdown grid for fuel */
+  .breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 20px;
+  }
+  .breakdown-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .breakdown-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 12px; }
+  .breakdown-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-family: 'DM Mono', monospace; font-size: 12px; }
+  .breakdown-row:last-child { border-bottom: none; }
+  .breakdown-key { color: var(--dim); }
+  .breakdown-val { color: var(--text); }
+
+  /* ULS deviation callout */
+  .uls-callout {
+    background: linear-gradient(135deg, var(--surface2), var(--surface));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-top: 24px;
+  }
+  .uls-title { font-size: 14px; font-weight: 700; color: var(--red); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .uls-bars { display: flex; flex-direction: column; gap: 14px; }
+  .bar-row { display: flex; flex-direction: column; gap: 6px; }
+  .bar-label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; display: flex; justify-content: space-between; }
+  .bar-track { background: rgba(255,255,255,0.05); border-radius: 4px; height: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+  .bar-csv { background: linear-gradient(90deg, var(--accent2), #0ea5e9); }
+  .bar-xlsx { background: linear-gradient(90deg, var(--red), #f97316); }
+
+  /* Operational scope */
+  .scope-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+  }
+  .scope-table tr { border-bottom: 1px solid var(--border); }
+  .scope-table td { padding: 14px 16px; }
+  .scope-table td:first-child { color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; width: 220px; }
+  .scope-badge {
+    display: inline-block;
+    background: rgba(56,189,248,0.1);
+    border: 1px solid rgba(56,189,248,0.25);
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 11px;
+    color: var(--accent2);
+  }
+
+  /* Emissions only section */
+  .emissions-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .em-card {
+    background: linear-gradient(135deg, rgba(56,189,248,0.06), rgba(56,189,248,0.02));
+    border: 1px solid rgba(56,189,248,0.15);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .em-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); font-family: 'DM Mono', monospace; margin-bottom: 8px; }
+  .em-value { font-size: 26px; font-weight: 800; color: #fff; }
+  .em-unit { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* Root cause section */
+  .causes { display: flex; flex-direction: column; gap: 16px; }
+  .cause-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .cause-num {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--accent);
+    flex-shrink: 0;
+  }
+  .cause-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .cause-body { font-size: 12px; color: var(--dim); line-height: 1.6; }
+
+  /* Footer */
+  .footer {
+    margin-top: 64px;
+    padding: 24px 60px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-left { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .footer-right { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  @media (max-width: 900px) {
+    .main, .header, .footer { padding-left: 24px; padding-right: 24px; }
+    .breakdown-grid { grid-template-columns: 1fr; }
+    .emissions-grid { grid-template-columns: repeat(2,1fr); }
+    .meta-row { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="vessel-tag">IMO 9404936 · Vessel Emissions Analysis</div>
+  <h1>AFRA MARE<br><span>Deviation Report</span></h1>
+  <div class="meta-row">
+    <div class="meta-item">
+      <span class="meta-label">Source A (DPN)</span>
+      <span class="meta-value">DPN_AFRA_MARE.csv</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Source B (MRV)</span>
+      <span class="meta-value">2025-MRV-leg-summary_...xlsx</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Reporting Year</span>
+      <span class="meta-value">2025</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">DPN Records</span>
+      <span class="meta-value">749 rows · 101 columns</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">MRV Legs</span>
+      <span class="meta-value">34 voyages · 34 port stays</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">MRV Method</span>
+      <span class="meta-value">Method C — Flow Meter (100%)</span>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ALERT -->
+  <div class="alert">
+    <div class="alert-icon">⚠</div>
+    <div>
+      <div class="alert-title">Critical Deviation Identified: ULS MGO Under-Reporting in DPN</div>
+      <div class="alert-body">
+        The DPN daily noon report records <strong>486.6 mt less ULS MGO</strong> than the MRV flow-meter system — a <strong>+19.0% discrepancy</strong>. All other fuel types (HS HFO, VLS HFO, VLS LFO) match to within rounding tolerance (&lt;0.1 mt). The deviation is concentrated in the <strong>at-sea phase</strong> (+601.8 mt in XLSX vs CSV), partially offset by higher in-port ULS MGO in the CSV (+116.2 mt). This suggests systematic under-reporting of auxiliary engine ULS MGO consumption during sea passages in noon reports.
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: SUMMARY SCORECARDS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">Key Deviation Summary</div>
+      <div class="section-sub">2025 full-year totals</div>
+    </div>
+    <div class="summary-grid">
+      <div class="card crit">
+        <div class="card-label">ULS MGO Deviation</div>
+        <div class="card-value red">+486.6 mt</div>
+        <div class="card-sub">MRV higher than DPN · +19.0%</div>
+      </div>
+      <div class="card ok">
+        <div class="card-label">HS HFO Match</div>
+        <div class="card-value green">+0.08 mt</div>
+        <div class="card-sub">Near-perfect alignment · +0.0%</div>
+      </div>
+      <div class="card ok">
+        <div class="card-label">VLS HFO Match</div>
+        <div class="card-value green">−0.07 mt</div>
+        <div class="card-sub">Near-perfect alignment · −0.01%</div>
+      </div>
+      <div class="card ok">
+        <div class="card-label">VLS LFO Match</div>
+        <div class="card-value green">−0.03 mt</div>
+        <div class="card-sub">Near-perfect alignment · −0.01%</div>
+      </div>
+      <div class="card warn">
+        <div class="card-label">Total Fuel Deviation</div>
+        <div class="card-value orange">+486.5 mt</div>
+        <div class="card-sub">DPN: 6,220.6 mt → MRV: 6,707.1 mt</div>
+      </div>
+      <div class="card info">
+        <div class="card-label">Distance Deviation</div>
+        <div class="card-value blue">+150.2 nm</div>
+        <div class="card-sub">Calc. dist · vs reported: −3.8 nm</div>
+      </div>
+      <div class="card info">
+        <div class="card-label">Time Scope Gap</div>
+        <div class="card-value blue">3,502 hrs</div>
+        <div class="card-sub">DPN full year · MRV voyage-only</div>
+      </div>
+      <div class="card info">
+        <div class="card-label">MRV CO2e</div>
+        <div class="card-value blue">21,505 mt</div>
+        <div class="card-sub">Not present in DPN source</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: FUEL COMPARISON -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">Fuel Consumption Comparison</div>
+      <div class="section-sub">All-consumer totals (ME + AE + Boiler)</div>
+    </div>
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th>Fuel Type</th>
+          <th class="num">DPN/CSV (mt)</th>
+          <th class="num">MRV/XLSX (mt)</th>
+          <th class="num">Absolute Diff (mt)</th>
+          <th class="num">% Diff</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>HS HFO (High Sulfur Heavy Fuel Oil)</td>
+          <td class="num">2,248.200</td>
+          <td class="num">2,248.281</td>
+          <td class="num diff-zero">+0.081</td>
+          <td class="num">0.00%</td>
+          <td><span class="pill ok">✓ Match</span></td>
+        </tr>
+        <tr>
+          <td>VLS HFO (Very Low Sulfur Heavy Fuel Oil)</td>
+          <td class="num">1,155.500</td>
+          <td class="num">1,155.430</td>
+          <td class="num diff-neg">−0.070</td>
+          <td class="num">−0.01%</td>
+          <td><span class="pill ok">✓ Match</span></td>
+        </tr>
+        <tr>
+          <td>VLS LFO (Very Low Sulfur Light Fuel Oil)</td>
+          <td class="num">257.100</td>
+          <td class="num">257.074</td>
+          <td class="num diff-neg">−0.026</td>
+          <td class="num">−0.01%</td>
+          <td><span class="pill ok">✓ Match</span></td>
+        </tr>
+        <tr>
+          <td>ULS MGO (Ultra Low Sulfur Marine Gas Oil)</td>
+          <td class="num">2,559.800</td>
+          <td class="num">3,046.361</td>
+          <td class="num diff-pos">+486.561</td>
+          <td class="num">+19.01%</td>
+          <td><span class="pill crit">⚠ Critical</span></td>
+        </tr>
+        <tr class="total-row">
+          <td>TOTAL FUEL</td>
+          <td class="num">6,220.600</td>
+          <td class="num">6,707.146</td>
+          <td class="num diff-pos">+486.546</td>
+          <td class="num">+7.82%</td>
+          <td><span class="pill crit">⚠ Deviating</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ULS breakdown by consumer -->
+    <div class="breakdown-grid">
+      <div class="breakdown-card">
+        <div class="breakdown-title">Main Engine (ME) — DPN</div>
+        <div class="breakdown-row"><span class="breakdown-key">HS HFO</span><span class="breakdown-val">1,938.8 mt</span></div>
+        <div class="breakdown-row"><span class="breakdown-key">VLS HFO</span><span class="breakdown-val">445.4 mt</span></div>
+        <div class="breakdown-row"><span class="breakdown-key">VLS LFO</span><span class="breakdown-val">137.7 mt</span></div>
+        <div class="breakdown-row"><span class="breakdown-key">ULS MGO</span><span class="breakdown-val">1,183.5 mt</span></div>
+      </div>
+      <div class="breakdown-card">
+        <div class="breakdown-title">Auxiliary Engine (AE) — DPN</div>
+        <div class="breakdown-row"><span class="breakdown-key">HS HFO</span><span class="breakdown-val">295.7 mt</span></div>
+        <div class="breakdown-row"><span class="breakdown-key">VLS HFO</span><span class="breakdown-val">323.0 mt</span></div>
+        <div class="breakdown-row"><span class="breakdown-key">VLS LFO</span><span class="breakdown-val">63.5 mt</span></div>
+        <div class="breakdown-row"><span class="breakdown-key">ULS MGO</span><span class="breakdown-val">541.4 mt</span></div>
+      </div>
+      <div class="breakdown-card">
+        <div class="breakdown-title">Boiler — DPN</div>
+        <div class="breakdown-row"><span class="breakdown-key">HS HFO</span><span class="breakdown-val">13.7 mt</span></div>
+        <div class="breakdown-row"><span class="breakdown-key">VLS HFO</span><span class="breakdown-val">387.1 mt</span></div>
+        <div class="breakdown-row"><span class="breakdown-key">VLS LFO</span><span class="breakdown-val">55.9 mt</span></div>
+        <div class="breakdown-row"><span class="breakdown-key">ULS MGO</span><span class="breakdown-val">834.9 mt</span></div>
+      </div>
+    </div>
+
+    <!-- ULS MGO Deviation Deeper Dive -->
+    <div class="uls-callout">
+      <div class="uls-title">⚑ ULS MGO Deviation Deep Dive — At-Sea vs. In-Port Breakdown</div>
+      <div class="uls-bars">
+        <div class="bar-row">
+          <div class="bar-label">
+            <span>AT SEA — DPN/CSV: 1,413.8 mt</span>
+            <span style="color:var(--red)">MRV/XLSX: 2,015.6 mt · Δ +601.8 mt</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill bar-csv" style="width:70.2%"></div>
+          </div>
+          <div class="bar-track" style="margin-top:3px">
+            <div class="bar-fill bar-xlsx" style="width:100%"></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;">Blue = DPN &nbsp;|&nbsp; Red = MRV (flow meter)</div>
+        <div class="bar-row" style="margin-top:12px">
+          <div class="bar-label">
+            <span>IN PORT/ANCHORING — DPN/CSV: 1,147.0 mt</span>
+            <span style="color:var(--green)">MRV/XLSX: 1,030.8 mt · Δ −116.2 mt (CSV higher)</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill bar-csv" style="width:100%"></div>
+          </div>
+          <div class="bar-track" style="margin-top:3px">
+            <div class="bar-fill bar-xlsx" style="width:89.9%"></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;margin-bottom:4px;">Blue = DPN &nbsp;|&nbsp; Red = MRV (flow meter)</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.7;border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+          <strong style="color:var(--text)">Interpretation:</strong> The at-sea ULS MGO is significantly under-reported in DPN (+601.8 mt), while in-port DPN reports marginally higher ULS MGO (+116.2 mt). The net effect is a <span style="color:var(--red)">+486.6 mt deficit</span> in the noon report system vs flow meter. This pattern points to noon report estimation error for auxiliary engine ULS MGO during sea passages.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: OPERATIONAL PARAMETERS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">Operational Parameters Comparison</div>
+      <div class="section-sub">Distance · Time · Scope</div>
+    </div>
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th class="num">DPN Value</th>
+          <th class="num">MRV Value</th>
+          <th class="num">Difference</th>
+          <th>Explanation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Distance — Calculated (nm)</td>
+          <td class="num">39,370.0</td>
+          <td class="num">39,520.2</td>
+          <td class="num diff-pos">+150.2 nm (+0.38%)</td>
+          <td style="font-size:11px;color:var(--muted)">GPS/log calculation differences</td>
+        </tr>
+        <tr>
+          <td>Distance — Reported (nm)</td>
+          <td class="num">39,524.0</td>
+          <td class="num">39,520.2</td>
+          <td class="num diff-neg">−3.8 nm (−0.01%)</td>
+          <td style="font-size:11px;color:var(--muted)"><span class="pill ok">Near-identical</span> MRV uses officer-reported distance</td>
+        </tr>
+        <tr>
+          <td>Time (hrs)</td>
+          <td class="num">8,760.0</td>
+          <td class="num">5,257.65</td>
+          <td class="num diff-neg">−3,502.35 hrs</td>
+          <td style="font-size:11px;color:var(--muted)">DPN = full year (365d); MRV = voyage segments only</td>
+        </tr>
+        <tr>
+          <td>Scope of Coverage</td>
+          <td class="num">Full year</td>
+          <td class="num">Leg-by-leg</td>
+          <td class="num">—</td>
+          <td style="font-size:11px;color:var(--muted)">MRV excludes non-voyage time (idle, waiting)</td>
+        </tr>
+        <tr>
+          <td>Avg SOG (kts)</td>
+          <td class="num">4.49</td>
+          <td class="num">N/A</td>
+          <td class="num">—</td>
+          <td style="font-size:11px;color:var(--muted)">DPN only; includes all modes incl. port stays</td>
+        </tr>
+        <tr>
+          <td>Perf. Speed (kts)</td>
+          <td class="num">11.60</td>
+          <td class="num">N/A</td>
+          <td class="num">—</td>
+          <td style="font-size:11px;color:var(--muted)">DPN sea-passage performance speed</td>
+        </tr>
+        <tr>
+          <td>Mean Draft (m)</td>
+          <td class="num">8.67</td>
+          <td class="num">N/A</td>
+          <td class="num">—</td>
+          <td style="font-size:11px;color:var(--muted)">DPN overall mean (Fore 7.48 / Aft 9.86)</td>
+        </tr>
+        <tr>
+          <td>Avg Cargo (mt)</td>
+          <td class="num">19,543.7</td>
+          <td class="num">N/A</td>
+          <td class="num">—</td>
+          <td style="font-size:11px;color:var(--muted)">DPN only</td>
+        </tr>
+        <tr>
+          <td>Transport Work (mt×nm)</td>
+          <td class="num">N/A</td>
+          <td class="num">1,152,383,688</td>
+          <td class="num">—</td>
+          <td style="font-size:11px;color:var(--muted)">MRV only — IMO DCS reporting metric</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 4: GHG EMISSIONS (MRV only) -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">Greenhouse Gas Emissions</div>
+      <div class="section-sub">MRV source only — not in DPN</div>
+    </div>
+    <div class="emissions-grid">
+      <div class="em-card">
+        <div class="em-label">CO₂</div>
+        <div class="em-value">21,175.8</div>
+        <div class="em-unit">metric tonnes</div>
+      </div>
+      <div class="em-card">
+        <div class="em-label">CO₂e (GWP weighted)</div>
+        <div class="em-value">21,505.2</div>
+        <div class="em-unit">metric tonnes</div>
+      </div>
+      <div class="em-card">
+        <div class="em-label">CH₄</div>
+        <div class="em-value">335.4</div>
+        <div class="em-unit">kilograms</div>
+      </div>
+      <div class="em-card">
+        <div class="em-label">N₂O</div>
+        <div class="em-value">1,207.3</div>
+        <div class="em-unit">kilograms</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:16px 20px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.15);border-radius:8px;font-size:12px;color:var(--dim);line-height:1.6;">
+      <strong style="color:var(--accent2)">Note:</strong> GHG emissions (CO₂, CH₄, N₂O, CO₂e) are computed and reported exclusively in the MRV leg-summary file. The DPN noon-report CSV contains no emissions calculations. The CO₂e figure of <strong style="color:var(--text)">21,505.2 mt</strong> represents the EU MRV-reportable total, including all three GHGs weighted by their Global Warming Potential. The 486.6 mt ULS MGO discrepancy, if corrected in MRV, would increase the CO₂ figure by approximately <strong style="color:var(--text)">~1,516 mt CO₂</strong> (using ULS MGO emission factor ~3.206 t CO₂/t fuel).
+    </div>
+  </div>
+
+  <!-- SECTION 5: STRUCTURAL DIFFERENCES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">Structural Data Differences</div>
+      <div class="section-sub">What each source contains</div>
+    </div>
+    <table class="scope-table">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;padding:10px 16px;">Feature / Field</td>
+          <td style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;padding:10px 16px;">DPN (CSV)</td>
+          <td style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;padding:10px 16px;">MRV (XLSX)</td>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Granularity</td>
+          <td><span class="scope-badge">Daily noon reports</span></td>
+          <td><span class="scope-badge" style="background:rgba(249,115,22,0.1);border-color:rgba(249,115,22,0.25);color:var(--accent)">Per-voyage leg</span></td>
+        </tr>
+        <tr>
+          <td>Monitoring Method</td>
+          <td>Noon-report estimation</td>
+          <td>Method C — Flow Meter (100%)</td>
+        </tr>
+        <tr>
+          <td>Time Coverage</td>
+          <td>Full year (8,760 hrs)</td>
+          <td>Voyage segments (5,257.65 hrs)</td>
+        </tr>
+        <tr>
+          <td>Consumer Breakdown</td>
+          <td>ME / AE / Boiler separately</td>
+          <td>Aggregate by fuel type only</td>
+        </tr>
+        <tr>
+          <td>Operational Mode Detail</td>
+          <td>At Sea, In Port, Maneuvering, Drifting</td>
+          <td>Voyage vs In Port only</td>
+        </tr>
+        <tr>
+          <td>Fuel Types Tracked</td>
+          <td>HSHFO, HSLFO, HSMDO, HSMGO, VLSHFO, VLSLFO, VLSMDO, VLSMGO, ULSHFO, ULSLFO, ULSMDO, ULSMGO, LNG, Other</td>
+          <td>HS HFO, VLS HFO, VLS LFO, ULS MGO</td>
+        </tr>
+        <tr>
+          <td>GHG Emissions</td>
+          <td style="color:var(--muted)">Not available</td>
+          <td>CO₂, CH₄, N₂O, CO₂e</td>
+        </tr>
+        <tr>
+          <td>Port Calls / Route</td>
+          <td style="color:var(--muted)">Position coordinates only</td>
+          <td>Named ports (departure + arrival)</td>
+        </tr>
+        <tr>
+          <td>Draft & Cargo</td>
+          <td>Fore/Aft/Mean draft, Cargo weight</td>
+          <td style="color:var(--muted)">Not available</td>
+        </tr>
+        <tr>
+          <td>ME Performance</td>
+          <td>RPM, Power (kW), SFOC (g/kWh)</td>
+          <td style="color:var(--muted)">Not available</td>
+        </tr>
+        <tr>
+          <td>Transport Work</td>
+          <td style="color:var(--muted)">Not available</td>
+          <td>mt × nm per leg</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 6: ROOT CAUSES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">Root Cause Analysis</div>
+      <div class="section-sub">Why the deviations exist</div>
+    </div>
+    <div class="causes">
+      <div class="cause-row">
+        <div class="cause-num">C1</div>
+        <div>
+          <div class="cause-title" style="color:var(--red)">ULS MGO: Flow Meter vs. Noon Estimate (Primary)</div>
+          <div class="cause-body">The MRV system uses 100% flow meter measurement (Method C), which provides continuous, automated fuel measurement. DPN noon reports rely on officer-estimated consumption submitted once daily. At-sea AE fuel consumption — particularly ULS MGO for auxiliary engines and boilers during sea passages — is chronically underestimated in manual noon reports. The +601.8 mt at-sea shortfall strongly supports this. The −116.2 mt in-port over-reporting in DPN may reflect officers rounding in-port consumption upward, slightly compensating but not resolving the overall deficit.</div>
+        </div>
+      </div>
+      <div class="cause-row">
+        <div class="cause-num">C2</div>
+        <div>
+          <div class="cause-title" style="color:var(--yellow)">Distance: Calculated vs. Reported (Minor)</div>
+          <div class="cause-body">The DPN calculates distance at 39,370 nm (GPS track-based) vs. the officer-reported distance of 39,524 nm. The MRV system uses 39,520.2 nm — aligned closely with the officer-reported figure (−3.8 nm). The 150.2 nm gap between DPN calculated and MRV distances is expected and not a source of concern; it reflects routing curves and GPS sampling intervals vs. navigation officer estimates.</div>
+        </div>
+      </div>
+      <div class="cause-row">
+        <div class="cause-num">C3</div>
+        <div>
+          <div class="cause-title" style="color:var(--accent2)">Time: Full Year vs. Voyage Segments (Scope Difference)</div>
+          <div class="cause-body">The 3,502-hour gap in time coverage is entirely structural, not a data error. The DPN reports the complete calendar year (8,760 hrs = 365 days × 24 hrs), including all idle and port time. The MRV XLSX sums only declared voyage legs and in-port stays (5,257.65 hrs). The remaining ~3,502 hrs represent idle/waiting periods not classified as part of a leg — consistent with an AFRAMAX tanker's typical operational profile.</div>
+        </div>
+      </div>
+      <div class="cause-row">
+        <div class="cause-num">C4</div>
+        <div>
+          <div class="cause-title" style="color:var(--dim)">HS HFO / VLS HFO / VLS LFO: Rounding Only</div>
+          <div class="cause-body">All three heavy fuel categories match to within ±0.08 mt across the full year — differences attributable purely to decimal rounding between systems. These fuel types are almost certainly measured by the same flow meters or tank sounding methods reported consistently across both systems, confirming data integrity for HFO categories.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-left">AFRA MARE (IMO 9404936) · 2025 Emissions Deviation Report · Generated April 2026</div>
+  <div class="footer-right">Sources: DPN_AFRA_MARE.csv · 2025-MRV-leg-summary_AFRA-MARE-20260306_0427.xlsx</div>
+</div>
+
+</body>
+</html>
